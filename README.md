@@ -83,6 +83,14 @@ seed always produces the same card. A cell is either an exact item or a group
 Requires **JDK 25**. No wrapper jar committed yet — open in IntelliJ (downloads
 Gradle 9.7.1 from `gradle-wrapper.properties`) or run `gradle wrapper --gradle-version 9.7.1` once.
 
+## Restart persistence
+
+A **running** game is written to `game.yml` on shutdown (card, seed, mode,
+per-team members + claimed cells, lockout locks, time left) and resumed
+automatically on the next enable — tasks, boss bar, scoreboard and card items
+are recreated. The file is deleted on a clean stop/win/draw. Games still in the
+pre-game countdown are not saved.
+
 ## Releases
 
 `.github/workflows/release.yml` builds on every push and publishes a GitHub
@@ -103,5 +111,6 @@ Release with the jar whenever `version` in `build.gradle.kts` changes.
 - [x] "one away!" broadcast + `hardcore` mode
 - [x] 6×6 cards
 - [x] Live scoreboard sidebar
-- [ ] Persist an in-progress game across restart
+- [x] Persist a running game across a restart (`game.yml`)
 - [ ] Lines-to-win / free-centre options
+- [ ] `/bingo pause`

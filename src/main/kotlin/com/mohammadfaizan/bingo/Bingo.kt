@@ -14,6 +14,7 @@ class Bingo : JavaPlugin() {
         saveDefaultConfig()
 
         Stats.init(this)
+        GameStore.init(this)
         BingoGame.init(this)
         server.pluginManager.registerEvents(BingoListener(), this)
 
@@ -23,11 +24,12 @@ class Bingo : JavaPlugin() {
             it.tabCompleter = handler
         }
 
+        BingoGame.resumeIfPresent()
         logger.info("Bingo ready.")
     }
 
     override fun onDisable() {
-        BingoGame.stop(null)
+        BingoGame.shutdown()
         logger.info("Bingo disabled.")
     }
 }

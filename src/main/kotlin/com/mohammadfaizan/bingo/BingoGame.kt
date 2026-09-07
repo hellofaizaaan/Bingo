@@ -267,8 +267,15 @@ object BingoGame {
         removeCardItems()
         card = null
         lockedBy.clear()
+        GameStore.clear()
         loadTeams() // restore config teams (drops any solo teams)
         Text.broadcast("<gray>Bingo stopped.")
+    }
+
+    /** Plugin disable: keep a running game so it can resume; otherwise wipe the store. */
+    fun shutdown() {
+        if (state == State.RUNNING) saveGame() else GameStore.clear()
+        stopTasks()
     }
 
     fun reroll(sender: CommandSender?): Boolean {
@@ -377,6 +384,7 @@ object BingoGame {
             if (win) firework(p)
         }
         Stats.recordGame(playerTeam.keys.toList(), team.members.toList())
+        GameStore.clear()
         removeCardItems()
         clearBar()
         clearScoreboard()
@@ -391,6 +399,7 @@ object BingoGame {
             state = State.ENDED
             stopTasks()
             Stats.recordGame(playerTeam.keys.toList(), emptyList())
+            GameStore.clear()
             removeCardItems()
             clearBar()
             clearScoreboard()
@@ -549,6 +558,7 @@ object BingoGame {
         if (state == State.IDLE || state == State.ENDED) return
         bar?.let { player.showBossBar(it) }
         scoreboard?.let { player.scoreboard = it }
+        if (state == State.RUNNING && teamOf(player.uniqueId) != null) giveCardItem(player)
     }
 
     // ---- scoreboard sidebar ----
@@ -685,4 +695,113 @@ object BingoGame {
 
     private fun sanitizeColor(c: String?): String =
         (c ?: "white").lowercase().takeIf { it in VALID_COLORS } ?: "white"
+
+    // ---- restart persistence ----
+
+    private fun saveGame() {
+        val c = card ?: run { GameStore.clear(); return }
+        if (state != State.RUNNING) {
+            GameStore.clear()
+            return
+        }
+        GameStore.write { y ->
+            y.set("mode", mode.name)
+            y.set("size", size)
+            y.set("seed", c.seed)
+            y.set("time-limit", timeLimitSecs)
+            y.set(
+                "time-left",
+                if (endsAt > 0L) ((endsAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0) else 0L,
+            )
+            y.set(
+                "cells",
+                c.cellList.map { cell ->
+                    when (cell) {
+                        is MaterialCell -> cell.mat.name
+                        is GroupCell -> "#${cell.name}|" + cell.members.joinToString(",") { it.name }
+                    }
+                },
+            )
+            teams.values.forEach { t ->
+                val base = "teams.${t.id}"
+                y.set("$base.display", t.display)
+                y.set("$base.color", t.colorMm)
+                y.set("$base.runtime", t.id in runtimeDefs)
+                y.set("$base.members", t.members.map { it.toString() })
+                y.set("$base.claimed", (0 until c.cells).joinToString("") { if (t.has(it)) "1" else "0" })
+            }
+            lockedBy.forEach { (idx, tid) -> y.set("locked.$idx", tid) }
+        }
+    }
+
+    fun resumeIfPresent() {
+        val y = GameStore.read() ?: return
+        GameStore.clear()
+        try {
+            val m = BingoMode.parse(y.getString("mode")) ?: return
+            val sz = y.getInt("size", 5).coerceIn(3, 6)
+            val specs = y.getStringList("cells")
+            if (specs.size < sz * sz) return
+
+            timeLimitSecs = y.getInt("time-limit", 0)
+            val left = y.getInt("time-left", 0)
+            if (timeLimitSecs > 0 && left <= 0) return // already timed out during downtime
+
+            mode = m
+            size = sz
+            card = Card(sz, y.getLong("seed"), specs.map { parseCellSpec(it) })
+            endsAt = if (timeLimitSecs > 0) System.currentTimeMillis() + left * 1000L else 0L
+
+            teams.clear(); playerTeam.clear(); runtimeDefs.clear(); lockedBy.clear(); warned.clear()
+            val tsec = y.getConfigurationSection("teams") ?: return
+            tsec.getKeys(false).forEach { id ->
+                val b = "teams.$id"
+                val team = BingoTeam(id, y.getString("$b.display") ?: id, sanitizeColor(y.getString("$b.color")))
+                team.initCard(sz * sz)
+                (y.getString("$b.claimed") ?: "").forEachIndexed { i, ch -> if (ch == '1') team.claim(i) }
+                y.getStringList("$b.members").forEach { s ->
+                    runCatching { UUID.fromString(s) }.getOrNull()?.let { u ->
+                        team.members.add(u)
+                        playerTeam[u] = id
+                    }
+                }
+                teams[id] = team
+                if (y.getBoolean("$b.runtime")) runtimeDefs[id] = team.display to team.colorMm
+            }
+            y.getConfigurationSection("locked")?.getKeys(false)?.forEach { k ->
+                val idx = k.toIntOrNull() ?: return@forEach
+                y.getString("locked.$k")?.let { lockedBy[idx] = it }
+            }
+
+            state = State.RUNNING
+            scanTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable { scan() }, 20L, 10L)
+            startBar()
+            buildScoreboard()
+            Bukkit.getScheduler().runTaskLater(
+                plugin,
+                Runnable {
+                    activePlayers().forEach { giveCardItem(it) }
+                    updateBar()
+                },
+                20L,
+            )
+            Bukkit.broadcast(Text.prefixed("<gray>A bingo game was resumed after restart."))
+        } catch (e: Exception) {
+            plugin.logger.warning("Bingo: failed to resume saved game — ${e.message}")
+            state = State.IDLE
+            card = null
+        }
+    }
+
+    private fun parseCellSpec(spec: String): Cell {
+        val s = spec.trim()
+        if (s.startsWith("#")) {
+            val body = s.removePrefix("#")
+            val name = body.substringBefore('|')
+            val mats = body.substringAfter('|', "").split(',')
+                .mapNotNull { Material.matchMaterial(it.trim().uppercase()) }.toSet()
+            if (mats.isNotEmpty()) return GroupCell(name, mats)
+        }
+        return MaterialCell(Material.matchMaterial(s.uppercase()) ?: Material.STONE)
+    }
 }
