@@ -10,10 +10,10 @@ import org.bukkit.entity.Player
 class BingoCommand : CommandExecutor, TabCompleter {
 
     private val subs = listOf(
-        "start", "solo", "stop", "join", "leave", "spectate", "card", "teams", "status",
-        "reveal", "top", "stats", "reroll", "reload",
+        "start", "solo", "stop", "join", "leave", "spectate", "lobby", "card", "teams", "team",
+        "status", "reveal", "top", "stats", "reroll", "reload",
     )
-    private val adminSubs = setOf("start", "solo", "stop", "reroll", "reload")
+    private val adminSubs = setOf("start", "solo", "stop", "team", "reroll", "reload")
     private val modeNames = BingoMode.entries.map { it.name.lowercase() }
 
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
@@ -62,6 +62,26 @@ class BingoCommand : CommandExecutor, TabCompleter {
                 val p = sender as? Player ?: return notPlayer(sender)
                 BingoGame.spectate(p)
             }
+            "lobby" -> {
+                val p = sender as? Player ?: return notPlayer(sender)
+                LobbyMenu.open(p)
+            }
+            "team" -> {
+                when (args.getOrNull(1)?.lowercase()) {
+                    "create" -> {
+                        val id = args.getOrNull(2)
+                        if (id == null) Text.send(sender, "<red>Usage: /$label team create <id> [colour]")
+                        else BingoGame.createTeam(sender, id, args.getOrNull(3) ?: "white")
+                    }
+                    "remove" -> {
+                        val id = args.getOrNull(2)
+                        if (id == null) Text.send(sender, "<red>Usage: /$label team remove <id>")
+                        else BingoGame.removeTeam(sender, id)
+                    }
+                    "clear" -> BingoGame.clearRuntimeTeams(sender)
+                    else -> Text.send(sender, "<red>/$label team <create <id> [colour] | remove <id> | clear>")
+                }
+            }
             "card" -> {
                 val p = sender as? Player ?: return notPlayer(sender)
                 CardMenu.open(p)
@@ -104,7 +124,8 @@ class BingoCommand : CommandExecutor, TabCompleter {
         Text.raw(sender, "<gradient:#4ade80:#22d3ee><bold>Bingo</bold></gradient> <dark_gray>·</dark_gray> <gray>commands")
         Text.raw(sender, "  <white>/$label start [mode] [size] [seed]</white> <gray>— begin (${modeNames.joinToString(", ")})")
         Text.raw(sender, "  <white>/$label solo [mode] [size]</white> <gray>— everyone is their own team")
-        Text.raw(sender, "  <white>/$label join <team></white> <dark_gray>·</dark_gray> <white>leave</white> <dark_gray>·</dark_gray> <white>spectate</white> <dark_gray>·</dark_gray> <white>card</white> <dark_gray>·</dark_gray> <white>teams</white>")
+        Text.raw(sender, "  <white>/$label lobby</white> <dark_gray>·</dark_gray> <white>join <team></white> <dark_gray>·</dark_gray> <white>leave</white> <dark_gray>·</dark_gray> <white>spectate</white> <dark_gray>·</dark_gray> <white>card</white> <dark_gray>·</dark_gray> <white>teams</white>")
+        Text.raw(sender, "  <white>/$label team <create|remove|clear></white> <gray>— runtime teams")
         Text.raw(sender, "  <white>/$label status</white> <dark_gray>·</dark_gray> <white>reveal</white> <dark_gray>·</dark_gray> <white>top</white> <dark_gray>·</dark_gray> <white>stats</white> <dark_gray>·</dark_gray> <white>stop</white> <dark_gray>·</dark_gray> <white>reroll</white> <dark_gray>·</dark_gray> <white>reload</white>")
     }
 
@@ -120,6 +141,13 @@ class BingoCommand : CommandExecutor, TabCompleter {
                 (modeNames + listOf("3", "4", "5")).filter { it.startsWith(args[1].lowercase()) }
             args.size == 2 && args[0].equals("join", true) ->
                 BingoGame.teams.keys.filter { it.startsWith(args[1].lowercase()) }
+            args.size == 2 && args[0].equals("team", true) ->
+                listOf("create", "remove", "clear").filter { it.startsWith(args[1].lowercase()) }
+            args.size == 3 && args[0].equals("team", true) && args[1].equals("remove", true) ->
+                BingoGame.runtimeTeamIds().filter { it.startsWith(args[2].lowercase()) }
+            args.size == 4 && args[0].equals("team", true) && args[1].equals("create", true) ->
+                listOf("red", "blue", "green", "yellow", "aqua", "gold", "light_purple", "white")
+                    .filter { it.startsWith(args[3].lowercase()) }
             args.size == 3 && (args[0].equals("start", true) || args[0].equals("solo", true)) ->
                 listOf("3", "4", "5").filter { it.startsWith(args[2]) }
             else -> emptyList()

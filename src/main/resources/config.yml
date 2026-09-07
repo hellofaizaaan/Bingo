@@ -26,6 +26,10 @@ on-start:
 # Random spread distance (blocks) from the world spawn when spread is on.
 spread-radius: 500
 
+# Hardcore: a death puts that player in spectator for the rest of the game.
+# Their team keeps whatever cells it has claimed.
+hardcore: false
+
 # ───────────────────────────────  Teams  ────────────────────────────
 # Colour must be a MiniMessage colour: red, blue, green, yellow, aqua,
 # light_purple, gold, white (also dark_* variants).

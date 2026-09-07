@@ -64,27 +64,76 @@ object BingoGame {
         loadTeams()
     }
 
+    /** Teams created at runtime with `/bingo team create`: id -> (display, colourMm). */
+    private val runtimeDefs = LinkedHashMap<String, Pair<String, String>>()
+
     private fun loadTeams() {
         val sec = plugin.config.getConfigurationSection("teams")
         val wanted = LinkedHashMap<String, BingoTeam>()
         sec?.getKeys(false)?.forEach { key ->
             val t = sec.getConfigurationSection(key) ?: return@forEach
             val id = key.lowercase()
-            val existing = teams[id]
-            val team = BingoTeam(id, t.getString("display", key) ?: key, sanitizeColor(t.getString("color", "white")))
-            if (existing != null) team.members.addAll(existing.members)
-            wanted[id] = team
+            wanted[id] = BingoTeam(id, t.getString("display", key) ?: key, sanitizeColor(t.getString("color", "white")))
+        }
+        runtimeDefs.forEach { (id, def) ->
+            wanted.getOrPut(id) { BingoTeam(id, def.first, sanitizeColor(def.second)) }
         }
         if (wanted.isEmpty()) {
             listOf("red", "blue", "green", "yellow").forEach { c ->
                 wanted[c] = BingoTeam(c, c.replaceFirstChar { it.uppercase() }, c)
             }
         }
-        // drop memberships for teams that no longer exist
+        // carry memberships across the rebuild
+        wanted.forEach { (id, team) -> teams[id]?.members?.let { team.members.addAll(it) } }
         playerTeam.entries.removeIf { it.value !in wanted }
         teams.clear()
         teams.putAll(wanted)
     }
+
+    fun createTeam(sender: CommandSender?, rawId: String, color: String): Boolean {
+        if (state != State.IDLE) {
+            Text.send(sender, "<red>Create teams before a game starts.")
+            return false
+        }
+        val id = rawId.lowercase()
+        if (teams.containsKey(id)) {
+            Text.send(sender, "<red>Team '<white>$id</white>' already exists.")
+            return false
+        }
+        val c = sanitizeColor(color)
+        runtimeDefs[id] = id.replaceFirstChar { it.uppercase() } to c
+        loadTeams()
+        Text.send(sender, "<green>Created team <$c>$id</$c>.")
+        return true
+    }
+
+    fun removeTeam(sender: CommandSender?, rawId: String): Boolean {
+        if (state != State.IDLE) {
+            Text.send(sender, "<red>Remove teams before a game starts.")
+            return false
+        }
+        val id = rawId.lowercase()
+        if (runtimeDefs.remove(id) == null) {
+            Text.send(sender, "<red>No runtime team '<white>$id</white>' (config teams are edited in config.yml).")
+            return false
+        }
+        loadTeams()
+        Text.send(sender, "<gray>Removed team $id.")
+        return true
+    }
+
+    fun clearRuntimeTeams(sender: CommandSender?) {
+        if (state != State.IDLE) {
+            Text.send(sender, "<red>Not while a game is running.")
+            return
+        }
+        runtimeDefs.clear()
+        loadTeams()
+        Text.send(sender, "<gray>Cleared all runtime teams.")
+    }
+
+    /** Ids of teams that can be removed with `/bingo team remove`. */
+    fun runtimeTeamIds(): Set<String> = runtimeDefs.keys.toSet()
 
     // ---- membership ----
 
@@ -133,6 +182,7 @@ object BingoGame {
         val used = seed ?: rng.nextLong()
         card = Card.generate(size, used, pool)
         lockedBy.clear()
+        warned.clear()
         teams.values.forEach { it.initCard(size * size) }
 
         val players = activePlayers()
@@ -278,6 +328,8 @@ object BingoGame {
         }
     }
 
+    private val warned = HashSet<String>()
+
     private fun checkWin(team: BingoTeam) {
         if (state != State.RUNNING) return
         val c = card ?: return
@@ -286,7 +338,21 @@ object BingoGame {
             BingoMode.COUNT -> team.claimedCount >= countTarget()
             else -> c.lines.any { line -> line.all { team.has(it) } }
         }
-        if (won) endWithWinner(team)
+        if (won) {
+            endWithWinner(team)
+            return
+        }
+        if (team.id !in warned && isOneAway(team, c)) {
+            warned.add(team.id)
+            Text.broadcast("<yellow>⚠ ${team.coloredName()} <yellow>needs just one more!")
+            activePlayers().forEach { it.playSound(it.location, Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1.4f) }
+        }
+    }
+
+    private fun isOneAway(team: BingoTeam, c: Card): Boolean = when (mode) {
+        BingoMode.BLACKOUT -> team.claimedCount >= c.cells - 1
+        BingoMode.COUNT -> team.claimedCount >= countTarget() - 1
+        else -> c.lines.any { line -> line.count { team.has(it) } == line.size - 1 }
     }
 
     private fun endWithWinner(team: BingoTeam) {
@@ -525,6 +591,15 @@ object BingoGame {
 
     /** Teams that have claimed cell [i] — for the spectator card view. */
     fun teamsHolding(i: Int): List<BingoTeam> = teams.values.filter { it.has(i) }
+
+    /** Hardcore mode: a death takes you out (spectator); your team keeps its cells. */
+    fun onDeath(player: Player) {
+        if (state != State.RUNNING) return
+        if (!plugin.config.getBoolean("hardcore", false)) return
+        if (teamOf(player.uniqueId) == null) return
+        Bukkit.getScheduler().runTask(plugin, Runnable { player.gameMode = GameMode.SPECTATOR })
+        Text.broadcast("<red>${player.name}</red> <gray>is out — hardcore.")
+    }
 
     /** `/bingo spectate` — watch without playing. */
     fun spectate(player: Player) {

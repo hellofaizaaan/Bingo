@@ -25,7 +25,9 @@ First to a line wins.
 | `start [mode] [size] [seed]` | begin a game (defaults from config) |
 | `solo [mode] [size]` | begin a game where every online player is their own team |
 | `stop` | end the game |
+| `lobby` | open a chest UI — click a wool to join that team, barrier to spectate |
 | `join <team>` / `leave` | pick / drop a team |
+| `team <create\|remove\|clear>` | make/remove runtime teams (admin, before a game) |
 | `spectate` | go spectator; `/bingo card` then shows which team holds each cell |
 | `card` | open the card as a chest GUI (glowing = your team has it, barrier = locked by another team) |
 | `teams` | list teams and their members |
@@ -60,6 +62,7 @@ On start each player is handed a **Bingo Card** item (right-click to open the GU
 | `auto-assign` | `true` | round-robin every online player onto teams at start |
 | `on-start.*` | all `true` | clear inventory, heal, spread, set time to day |
 | `spread-radius` | `500` | blocks from world spawn |
+| `hardcore` | `false` | a death spectates that player for the rest of the game |
 | `teams` | red/blue/green/yellow | `id: { display, color }` — colour is a MiniMessage colour name |
 | `item-pool` | ~130 items + 9 groups | `distribution` weights, `groups` (named "any of these" sets), and `easy` / `medium` / `hard` lists of materials and `"#group"` refs |
 
@@ -94,7 +97,8 @@ Release with the jar whenever `version` in `build.gradle.kts` changes.
 - [x] Physical Bingo Card item (right-click to open)
 - [x] Claim particles + persisted win/games stats (`/bingo top`, `/bingo stats`)
 - [x] `/bingo reveal`
+- [x] Runtime team creation (`/bingo team create`) + `/bingo lobby` GUI
+- [x] "one away!" broadcast + `hardcore` mode
 - [ ] 7×7 cards (needs a double-chest / bigger GUI)
-- [ ] Per-game team creation (`/bingo team create`)
 - [ ] Scoreboard sidebar
 - [ ] Persist an in-progress game across restart

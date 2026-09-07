@@ -7,7 +7,7 @@ author: hellofaizan
 commands:
   bingo:
     description: Item Bingo
-    usage: /<command> <start [mode] [size] [seed] | solo | stop | join <team> | leave | spectate | card | teams | status | reveal | top | stats | reroll | reload>
+    usage: /<command> <start [mode] [size] [seed] | solo | stop | join <team> | leave | spectate | lobby | card | teams | team <create|remove|clear> | status | reveal | top | stats | reroll | reload>
     aliases: [bg]
 permissions:
   bingo.admin:
