@@ -1,0 +1,196 @@
+# ───────────────────────────────  Game  ─────────────────────────────
+# Default mode + card size when /bingo start is run with no arguments.
+default-mode: standard   # standard | blackout | lockout | count
+default-size: 5          # 3, 4 or 5
+
+# `count` mode: how many cells a team needs. Default = just over half the card.
+count-target: 13
+
+# Seconds before the game actually begins after /bingo start.
+start-countdown: 10
+
+# Optional hard time limit in seconds (0 = none). On expiry, most cells wins.
+time-limit: 0
+
+# Auto-assign every online player (not bingo.exempt, in survival/adventure) to a
+# team, round-robin, when the game starts.
+auto-assign: true
+
+# What to do to each player when the game begins.
+on-start:
+  clear-inventory: true
+  heal: true
+  spread: true
+  set-time-day: true
+
+# Random spread distance (blocks) from the world spawn when spread is on.
+spread-radius: 500
+
+# ───────────────────────────────  Teams  ────────────────────────────
+# Colour must be a MiniMessage colour: red, blue, green, yellow, aqua,
+# light_purple, gold, white (also dark_* variants).
+teams:
+  red:
+    display: Red
+    color: red
+  blue:
+    display: Blue
+    color: blue
+  green:
+    display: Green
+    color: green
+  yellow:
+    display: Yellow
+    color: yellow
+
+# ─────────────────────────────  Item pool  ──────────────────────────
+# `distribution` = relative weight of each tier when filling a card.
+# Every other key is a tier: a list of Bukkit material names to draw from.
+item-pool:
+  distribution:
+    easy: 5
+    medium: 3
+    hard: 1
+  easy:
+    - COBBLESTONE
+    - DIRT
+    - OAK_LOG
+    - OAK_PLANKS
+    - SAND
+    - GRAVEL
+    - STICK
+    - TORCH
+    - CRAFTING_TABLE
+    - FURNACE
+    - CHEST
+    - COAL
+    - CHARCOAL
+    - APPLE
+    - WHEAT
+    - BREAD
+    - WHEAT_SEEDS
+    - CARROT
+    - POTATO
+    - EGG
+    - FEATHER
+    - STRING
+    - LEATHER
+    - WHITE_WOOL
+    - BONE
+    - ROTTEN_FLESH
+    - GUNPOWDER
+    - FLINT
+    - CLAY_BALL
+    - SUGAR_CANE
+    - PUMPKIN
+    - MELON_SLICE
+    - COOKED_BEEF
+    - COOKED_CHICKEN
+    - IRON_NUGGET
+    - PAPER
+    - BOOK
+    - LADDER
+    - BOWL
+    - BUCKET
+    - OAK_BOAT
+    - OAK_SIGN
+    - SNOWBALL
+    - ICE
+    - CACTUS
+    - DANDELION
+    - POPPY
+    - KELP
+    - MOSS_BLOCK
+    - COBWEB
+  medium:
+    - IRON_INGOT
+    - GOLD_INGOT
+    - IRON_PICKAXE
+    - IRON_SWORD
+    - IRON_AXE
+    - SHIELD
+    - BOW
+    - ARROW
+    - CROSSBOW
+    - FISHING_ROD
+    - COMPASS
+    - CLOCK
+    - SHEARS
+    - FLINT_AND_STEEL
+    - REDSTONE
+    - REDSTONE_TORCH
+    - REPEATER
+    - PISTON
+    - SLIME_BALL
+    - LAPIS_LAZULI
+    - GLASS
+    - GLOWSTONE
+    - NETHERRACK
+    - SOUL_SAND
+    - MAGMA_BLOCK
+    - QUARTZ
+    - BLAZE_ROD
+    - BLAZE_POWDER
+    - ENDER_PEARL
+    - SPIDER_EYE
+    - FERMENTED_SPIDER_EYE
+    - GHAST_TEAR
+    - MAP
+    - NAME_TAG
+    - LEAD
+    - SADDLE
+    - HONEYCOMB
+    - HONEY_BOTTLE
+    - SWEET_BERRIES
+    - GLOW_BERRIES
+    - AMETHYST_SHARD
+    - COPPER_INGOT
+    - SPYGLASS
+    - LANTERN
+    - CAKE
+    - JACK_O_LANTERN
+    - BOOKSHELF
+    - ANVIL
+    - CAULDRON
+    - BREWING_STAND
+    - GOLDEN_APPLE
+    - MUSIC_DISC_CAT
+  hard:
+    - DIAMOND
+    - DIAMOND_PICKAXE
+    - DIAMOND_SWORD
+    - DIAMOND_BLOCK
+    - EMERALD
+    - NETHERITE_SCRAP
+    - NETHERITE_INGOT
+    - ANCIENT_DEBRIS
+    - ENCHANTING_TABLE
+    - EXPERIENCE_BOTTLE
+    - ENDER_EYE
+    - ENDER_CHEST
+    - OBSIDIAN
+    - CRYING_OBSIDIAN
+    - RESPAWN_ANCHOR
+    - LODESTONE
+    - BEACON
+    - CONDUIT
+    - HEART_OF_THE_SEA
+    - NAUTILUS_SHELL
+    - TRIDENT
+    - ELYTRA
+    - DRAGON_BREATH
+    - SHULKER_SHELL
+    - TOTEM_OF_UNDYING
+    - NETHER_STAR
+    - WITHER_SKELETON_SKULL
+    - GOLDEN_CARROT
+    - ENCHANTED_GOLDEN_APPLE
+    - END_CRYSTAL
+    - TURTLE_SCUTE
+    - TURTLE_HELMET
+    - PHANTOM_MEMBRANE
+    - GLISTERING_MELON_SLICE
+    - SEA_LANTERN
+    - PRISMARINE_SHARD
+    - PRISMARINE_CRYSTALS
+    - SPONGE

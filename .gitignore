@@ -1,0 +1,16 @@
+# Build output
+build/
+.gradle/
+
+# run-paper dev server
+run/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db

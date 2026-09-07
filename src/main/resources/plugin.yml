@@ -1,0 +1,18 @@
+name: Bingo
+version: '${version}'
+main: com.mohammadfaizan.bingo.Bingo
+api-version: '26.2'
+description: Team item-bingo race on a seeded card.
+author: hellofaizan
+commands:
+  bingo:
+    description: Item Bingo
+    usage: /<command> <start [mode] [size] [seed] | stop | join <team> | leave | card | teams | status | reroll | reload>
+    aliases: [bg]
+permissions:
+  bingo.admin:
+    description: Start/stop/reroll/reload Bingo
+    default: op
+  bingo.exempt:
+    description: Not auto-assigned to a team on start
+    default: false
