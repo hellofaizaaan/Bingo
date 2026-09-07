@@ -2,6 +2,7 @@ package com.mohammadfaizan.bingo
 
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.Color
@@ -9,10 +10,14 @@ import org.bukkit.FireworkEffect
 import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
+import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Firework
 import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 import kotlin.random.Random
@@ -45,6 +50,9 @@ object BingoGame {
     private var timeLimitSecs = 0
 
     val currentCard: Card? get() = card
+
+    /** PDC tag on the "Bingo Card" item players carry. */
+    val CARD_KEY: NamespacedKey by lazy { NamespacedKey(plugin, "card_item") }
 
     fun init(p: Bingo) {
         plugin = p
@@ -185,6 +193,7 @@ object BingoGame {
         activePlayers().forEach {
             it.showTitle(Title.title(Text.mm("<green><bold>GO!"), Text.mm("<gray>first to ${goalText()}")))
             it.playSound(it.location, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.6f, 1.5f)
+            giveCardItem(it)
         }
         Text.broadcast("<green><bold>GO!</bold></green> <gray>First to ${goalText()} wins.")
         scanTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable { scan() }, 10L, 10L)
@@ -199,6 +208,7 @@ object BingoGame {
         state = State.IDLE
         stopTasks()
         clearBar()
+        removeCardItems()
         card = null
         lockedBy.clear()
         loadTeams() // restore config teams (drops any solo teams)
@@ -261,7 +271,7 @@ object BingoGame {
                     if (team.has(idx)) return@forEachIndexed
                     team.claim(idx)
                 }
-                announceClaim(team, cell, mat)
+                announceClaim(team, cell, mat, player)
                 checkWin(team)
                 if (state != State.RUNNING) return
             }
@@ -294,6 +304,8 @@ object BingoGame {
             p.playSound(p.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f)
             if (win) firework(p)
         }
+        Stats.recordGame(playerTeam.keys.toList(), team.members.toList())
+        removeCardItems()
         clearBar()
         loadTeams()
     }
@@ -305,6 +317,8 @@ object BingoGame {
         if (lead == null || tie) {
             state = State.ENDED
             stopTasks()
+            Stats.recordGame(playerTeam.keys.toList(), emptyList())
+            removeCardItems()
             clearBar()
             Text.broadcast("<yellow>Time! It's a draw at <white>${lead?.claimedCount ?: 0}</white> cells.")
             loadTeams()
@@ -388,13 +402,56 @@ object BingoGame {
         }
     }
 
-    private fun announceClaim(team: BingoTeam, cell: Cell, mat: Material) {
+    private fun announceClaim(team: BingoTeam, cell: Cell, mat: Material, by: Player) {
         val total = card?.cells ?: 0
         val what = if (cell is GroupCell) "${niceName(mat)} <dark_gray>(${cell.display})" else niceName(mat)
         Text.broadcastRaw(
             "${team.coloredName()} <gray>got <white>$what</white> <dark_gray>(${team.claimedCount}/$total)",
         )
         activePlayers().forEach { it.playSound(it.location, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.1f) }
+        by.world.spawnParticle(Particle.HAPPY_VILLAGER, by.location.clone().add(0.0, 1.0, 0.0), 14, 0.4, 0.6, 0.4, 0.0)
+        by.playSound(by.location, Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.4f)
+    }
+
+    private fun giveCardItem(p: Player) {
+        val item = ItemStack(Material.FILLED_MAP)
+        val meta = item.itemMeta ?: return
+        meta.displayName(
+            Text.mm("<gradient:#4ade80:#22d3ee><bold>Bingo Card</bold></gradient>").decoration(TextDecoration.ITALIC, false),
+        )
+        meta.lore(listOf(Text.mm("<gray>Right-click to open").decoration(TextDecoration.ITALIC, false)))
+        meta.persistentDataContainer.set(CARD_KEY, PersistentDataType.BYTE, 1.toByte())
+        item.itemMeta = meta
+        p.inventory.setItem(8, item)
+    }
+
+    private fun removeCardItems() {
+        playerTeam.keys.mapNotNull { Bukkit.getPlayer(it) }.forEach { p ->
+            p.inventory.contents.forEachIndexed { i, s ->
+                val m = s?.itemMeta ?: return@forEachIndexed
+                if (m.persistentDataContainer.has(CARD_KEY, PersistentDataType.BYTE)) p.inventory.setItem(i, null)
+            }
+        }
+    }
+
+    fun isCardItem(item: ItemStack?): Boolean {
+        val m = item?.itemMeta ?: return false
+        return m.persistentDataContainer.has(CARD_KEY, PersistentDataType.BYTE)
+    }
+
+    fun reveal(sender: CommandSender) {
+        val c = card ?: run {
+            Text.send(sender, "<red>No card right now.")
+            return
+        }
+        Text.raw(sender, "<gray>Card <white>${c.seed}</white> — ${c.size}×${c.size}:")
+        for (r in 0 until c.size) {
+            val row = (0 until c.size).joinToString(" <dark_gray>·</dark_gray> ") {
+                val idx = r * c.size + it
+                if (idx < c.cellList.size) "<white>${c.cellList[idx].display}</white>" else "<dark_gray>-"
+            }
+            Text.raw(sender, "  $row")
+        }
     }
 
     private fun firework(p: Player) {

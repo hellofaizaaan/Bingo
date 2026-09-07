@@ -1,5 +1,6 @@
 package com.mohammadfaizan.bingo
 
+import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
@@ -8,7 +9,10 @@ import org.bukkit.entity.Player
 
 class BingoCommand : CommandExecutor, TabCompleter {
 
-    private val subs = listOf("start", "solo", "stop", "join", "leave", "spectate", "card", "teams", "status", "reroll", "reload")
+    private val subs = listOf(
+        "start", "solo", "stop", "join", "leave", "spectate", "card", "teams", "status",
+        "reveal", "top", "stats", "reroll", "reload",
+    )
     private val adminSubs = setOf("start", "solo", "stop", "reroll", "reload")
     private val modeNames = BingoMode.entries.map { it.name.lowercase() }
 
@@ -64,6 +68,28 @@ class BingoCommand : CommandExecutor, TabCompleter {
             }
             "teams" -> BingoGame.teamsList(sender)
             "status" -> BingoGame.status(sender)
+            "reveal" -> BingoGame.reveal(sender)
+            "top" -> {
+                val rows = Stats.top(10)
+                if (rows.isEmpty()) {
+                    Text.send(sender, "<gray>No games have been played yet.")
+                } else {
+                    Text.raw(sender, "<gradient:#4ade80:#22d3ee><bold>Bingo — top players</bold>")
+                    rows.forEachIndexed { i, r ->
+                        val nm = Bukkit.getOfflinePlayer(r.uuid).name ?: r.uuid.toString().take(8)
+                        Text.raw(sender, "  <dark_gray>${i + 1}.</dark_gray> <white>$nm</white> <gray>— <white>${r.wins}</white>w / ${r.played}g")
+                    }
+                }
+            }
+            "stats" -> {
+                val target = args.getOrNull(1)?.let { Bukkit.getOfflinePlayer(it) } ?: (sender as? Player)
+                if (target == null) {
+                    Text.send(sender, "<red>Usage: /$label stats <player>")
+                } else {
+                    val r = Stats.of(target.uniqueId)
+                    Text.send(sender, "<white>${target.name ?: "?"}</white> <gray>— <white>${r.wins}</white> wins / <white>${r.played}</white> games")
+                }
+            }
             else -> help(sender, label)
         }
         return true
@@ -79,7 +105,7 @@ class BingoCommand : CommandExecutor, TabCompleter {
         Text.raw(sender, "  <white>/$label start [mode] [size] [seed]</white> <gray>— begin (${modeNames.joinToString(", ")})")
         Text.raw(sender, "  <white>/$label solo [mode] [size]</white> <gray>— everyone is their own team")
         Text.raw(sender, "  <white>/$label join <team></white> <dark_gray>·</dark_gray> <white>leave</white> <dark_gray>·</dark_gray> <white>spectate</white> <dark_gray>·</dark_gray> <white>card</white> <dark_gray>·</dark_gray> <white>teams</white>")
-        Text.raw(sender, "  <white>/$label status</white> <dark_gray>·</dark_gray> <white>stop</white> <dark_gray>·</dark_gray> <white>reroll</white> <dark_gray>·</dark_gray> <white>reload</white>")
+        Text.raw(sender, "  <white>/$label status</white> <dark_gray>·</dark_gray> <white>reveal</white> <dark_gray>·</dark_gray> <white>top</white> <dark_gray>·</dark_gray> <white>stats</white> <dark_gray>·</dark_gray> <white>stop</white> <dark_gray>·</dark_gray> <white>reroll</white> <dark_gray>·</dark_gray> <white>reload</white>")
     }
 
     override fun onTabComplete(

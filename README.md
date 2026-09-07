@@ -30,8 +30,13 @@ First to a line wins.
 | `card` | open the card as a chest GUI (glowing = your team has it, barrier = locked by another team) |
 | `teams` | list teams and their members |
 | `status` | mode, size, seed, per-team cell counts |
+| `reveal` | print the current card to yourself |
+| `top` | win/games leaderboard (persisted in `stats.yml`) |
+| `stats [player]` | wins / games for you or another player |
 | `reroll` | roll a new card (before the game starts) |
 | `reload` | re-read `config.yml` + item pool |
+
+On start each player is handed a **Bingo Card** item (right-click to open the GUI).
 
 `start` / `stop` / `reroll` / `reload` need `bingo.admin` (op). `bingo.exempt` players aren't auto-assigned.
 
@@ -86,6 +91,9 @@ Release with the jar whenever `version` in `build.gradle.kts` changes.
 - [x] Material groups (`#planks` → "any planks")
 - [x] Spectator mode (`/bingo spectate` + holder-aware card view)
 - [x] Item-pool size guard on start
+- [x] Physical Bingo Card item (right-click to open)
+- [x] Claim particles + persisted win/games stats (`/bingo top`, `/bingo stats`)
+- [x] `/bingo reveal`
 - [ ] 7×7 cards (needs a double-chest / bigger GUI)
 - [ ] Per-game team creation (`/bingo team create`)
 - [ ] Scoreboard sidebar

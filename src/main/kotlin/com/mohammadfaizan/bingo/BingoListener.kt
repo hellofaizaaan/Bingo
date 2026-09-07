@@ -4,10 +4,12 @@ import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.block.Action
 import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.inventory.CraftItemEvent
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryDragEvent
+import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerJoinEvent
 
 class BingoListener : Listener {
@@ -15,6 +17,14 @@ class BingoListener : Listener {
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
         BingoGame.onPlayerJoin(event.player)
+    }
+
+    @EventHandler
+    fun onInteract(event: PlayerInteractEvent) {
+        if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK) return
+        if (!BingoGame.isCardItem(event.item)) return
+        event.isCancelled = true
+        CardMenu.open(event.player)
     }
 
     @EventHandler

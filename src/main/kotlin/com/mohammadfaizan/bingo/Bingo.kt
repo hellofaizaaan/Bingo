@@ -13,6 +13,7 @@ class Bingo : JavaPlugin() {
         instance = this
         saveDefaultConfig()
 
+        Stats.init(this)
         BingoGame.init(this)
         server.pluginManager.registerEvents(BingoListener(), this)
 
