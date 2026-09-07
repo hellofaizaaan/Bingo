@@ -118,6 +118,10 @@ object BingoGame {
 
         mode = m
         size = requestedSize.coerceIn(3, 5)
+        if (pool.poolSize < size * size) {
+            Text.send(sender, "<red>Item pool has only <white>${pool.poolSize}</white> entries — not enough for a ${size}×${size} card.")
+            return false
+        }
         val used = seed ?: rng.nextLong()
         card = Card.generate(size, used, pool)
         lockedBy.clear()
@@ -247,20 +251,20 @@ object BingoGame {
         for (stack in player.inventory.contents) {
             val mat = stack?.type ?: continue
             if (mat == Material.AIR) continue
-            val idx = c.indexOf(mat)
-            if (idx < 0) continue
-
-            if (mode == BingoMode.LOCKOUT) {
-                if (lockedBy.containsKey(idx)) continue
-                lockedBy[idx] = team.id
-                team.claim(idx)
-            } else {
-                if (team.has(idx)) continue
-                team.claim(idx)
+            c.cellList.forEachIndexed { idx, cell ->
+                if (!cell.matches(mat)) return@forEachIndexed
+                if (mode == BingoMode.LOCKOUT) {
+                    if (lockedBy.containsKey(idx)) return@forEachIndexed
+                    lockedBy[idx] = team.id
+                    team.claim(idx)
+                } else {
+                    if (team.has(idx)) return@forEachIndexed
+                    team.claim(idx)
+                }
+                announceClaim(team, cell, mat)
+                checkWin(team)
+                if (state != State.RUNNING) return
             }
-            announceClaim(team, mat)
-            checkWin(team)
-            if (state != State.RUNNING) return
         }
     }
 
@@ -384,10 +388,11 @@ object BingoGame {
         }
     }
 
-    private fun announceClaim(team: BingoTeam, mat: Material) {
+    private fun announceClaim(team: BingoTeam, cell: Cell, mat: Material) {
         val total = card?.cells ?: 0
+        val what = if (cell is GroupCell) "${niceName(mat)} <dark_gray>(${cell.display})" else niceName(mat)
         Text.broadcastRaw(
-            "${team.coloredName()} <gray>got <white>${nice(mat)}</white> <dark_gray>(${team.claimedCount}/$total)",
+            "${team.coloredName()} <gray>got <white>$what</white> <dark_gray>(${team.claimedCount}/$total)",
         )
         activePlayers().forEach { it.playSound(it.location, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.1f) }
     }
@@ -461,8 +466,15 @@ object BingoGame {
         else -> "a line"
     }
 
-    private fun nice(mat: Material): String =
-        mat.name.lowercase().replace('_', ' ').split(' ').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+    /** Teams that have claimed cell [i] — for the spectator card view. */
+    fun teamsHolding(i: Int): List<BingoTeam> = teams.values.filter { it.has(i) }
+
+    /** `/bingo spectate` — watch without playing. */
+    fun spectate(player: Player) {
+        leave(player)
+        player.gameMode = GameMode.SPECTATOR
+        Text.send(player, "<gray>Spectating. Open the card with <white>/bingo card</white>.")
+    }
 
     private val VALID_COLORS = setOf(
         "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple", "gold", "gray",

@@ -34,7 +34,7 @@ object CardMenu {
         holder.inv = inv
 
         val myTeam = BingoGame.teamOf(player.uniqueId)
-        for (i in card.items.indices) {
+        for (i in card.cellList.indices) {
             val slot = slotFor(card.size, i / card.size, i % card.size)
             inv.setItem(slot, cellItem(card, i, myTeam))
         }
@@ -48,21 +48,27 @@ object CardMenu {
     }
 
     private fun cellItem(card: Card, i: Int, myTeam: BingoTeam?): ItemStack {
-        val mat = card.items[i]
+        val cell = card.cellList[i]
         val mineHas = myTeam?.has(i) == true
         val locked = BingoGame.lockedTeam(i)
 
+        // spectator: no team — show who holds each cell
+        if (myTeam == null) {
+            val holders = BingoGame.teamsHolding(i)
+            return if (holders.isEmpty()) {
+                label(ItemStack(cell.icon), "<white>${cell.display}", "<dark_gray>unclaimed")
+            } else {
+                glow(ItemStack(cell.icon), "<white>${cell.display}", "<gray>held by ${holders.joinToString(", ") { it.display }}")
+            }
+        }
+
         return when {
-            mineHas -> glow(ItemStack(mat), name(mat), "<green>✔ obtained")
+            mineHas -> glow(ItemStack(cell.icon), "<green>${cell.display}", "<green>✔ obtained")
             locked != null && locked !== myTeam ->
-                label(ItemStack(Material.BARRIER), "<red>${name(mat)}", "<red>locked by ${locked.display}")
-            else -> label(ItemStack(mat), "<white>${name(mat)}", "<dark_gray>not yet")
+                label(ItemStack(Material.BARRIER), "<red>${cell.display}", "<red>locked by ${locked.display}")
+            else -> label(ItemStack(cell.icon), "<white>${cell.display}", "<dark_gray>not yet")
         }
     }
-
-    private fun name(mat: Material): String =
-        mat.name.lowercase().replace('_', ' ').split(' ')
-            .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 
     private fun label(item: ItemStack, title: String, lore: String): ItemStack {
         val meta = item.itemMeta ?: return item

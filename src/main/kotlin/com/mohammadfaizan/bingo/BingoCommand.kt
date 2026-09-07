@@ -8,7 +8,7 @@ import org.bukkit.entity.Player
 
 class BingoCommand : CommandExecutor, TabCompleter {
 
-    private val subs = listOf("start", "solo", "stop", "join", "leave", "card", "teams", "status", "reroll", "reload")
+    private val subs = listOf("start", "solo", "stop", "join", "leave", "spectate", "card", "teams", "status", "reroll", "reload")
     private val adminSubs = setOf("start", "solo", "stop", "reroll", "reload")
     private val modeNames = BingoMode.entries.map { it.name.lowercase() }
 
@@ -54,6 +54,10 @@ class BingoCommand : CommandExecutor, TabCompleter {
                 BingoGame.leave(p)
                 Text.send(sender, "<gray>Left your team.")
             }
+            "spectate" -> {
+                val p = sender as? Player ?: return notPlayer(sender)
+                BingoGame.spectate(p)
+            }
             "card" -> {
                 val p = sender as? Player ?: return notPlayer(sender)
                 CardMenu.open(p)
@@ -74,7 +78,7 @@ class BingoCommand : CommandExecutor, TabCompleter {
         Text.raw(sender, "<gradient:#4ade80:#22d3ee><bold>Bingo</bold></gradient> <dark_gray>·</dark_gray> <gray>commands")
         Text.raw(sender, "  <white>/$label start [mode] [size] [seed]</white> <gray>— begin (${modeNames.joinToString(", ")})")
         Text.raw(sender, "  <white>/$label solo [mode] [size]</white> <gray>— everyone is their own team")
-        Text.raw(sender, "  <white>/$label join <team></white> <dark_gray>·</dark_gray> <white>leave</white> <dark_gray>·</dark_gray> <white>card</white> <dark_gray>·</dark_gray> <white>teams</white>")
+        Text.raw(sender, "  <white>/$label join <team></white> <dark_gray>·</dark_gray> <white>leave</white> <dark_gray>·</dark_gray> <white>spectate</white> <dark_gray>·</dark_gray> <white>card</white> <dark_gray>·</dark_gray> <white>teams</white>")
         Text.raw(sender, "  <white>/$label status</white> <dark_gray>·</dark_gray> <white>stop</white> <dark_gray>·</dark_gray> <white>reroll</white> <dark_gray>·</dark_gray> <white>reload</white>")
     }
 

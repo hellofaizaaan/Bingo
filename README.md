@@ -26,6 +26,7 @@ First to a line wins.
 | `solo [mode] [size]` | begin a game where every online player is their own team |
 | `stop` | end the game |
 | `join <team>` / `leave` | pick / drop a team |
+| `spectate` | go spectator; `/bingo card` then shows which team holds each cell |
 | `card` | open the card as a chest GUI (glowing = your team has it, barrier = locked by another team) |
 | `teams` | list teams and their members |
 | `status` | mode, size, seed, per-team cell counts |
@@ -55,11 +56,12 @@ First to a line wins.
 | `on-start.*` | all `true` | clear inventory, heal, spread, set time to day |
 | `spread-radius` | `500` | blocks from world spawn |
 | `teams` | red/blue/green/yellow | `id: { display, color }` — colour is a MiniMessage colour name |
-| `item-pool` | ~130 items | `distribution` weights + `easy` / `medium` / `hard` material lists |
+| `item-pool` | ~130 items + 9 groups | `distribution` weights, `groups` (named "any of these" sets), and `easy` / `medium` / `hard` lists of materials and `"#group"` refs |
 
-Card generation: fill `size²` distinct materials by rolling a tier (weighted by
-`distribution`) then a random material from it, seeded by the game seed — so the
-same seed always produces the same card.
+Card generation: fill `size²` distinct **cells** by rolling a tier (weighted by
+`distribution`) then a random entry from it, seeded by the game seed — so the same
+seed always produces the same card. A cell is either an exact item or a group
+(`#planks` → "any planks"); holding **any** member of a group claims it.
 
 ## Build
 
@@ -81,8 +83,10 @@ Release with the jar whenever `version` in `build.gradle.kts` changes.
 - [x] Instant claim on pickup / craft / inventory move (+ 0.5 s backstop)
 - [x] `/bingo solo` — everyone is their own team
 - [x] Live action-bar standings
+- [x] Material groups (`#planks` → "any planks")
+- [x] Spectator mode (`/bingo spectate` + holder-aware card view)
+- [x] Item-pool size guard on start
 - [ ] 7×7 cards (needs a double-chest / bigger GUI)
-- [ ] Material *groups* on a card ("any planks", "any raw ore")
 - [ ] Per-game team creation (`/bingo team create`)
-- [ ] Scoreboard sidebar, spectator card view
+- [ ] Scoreboard sidebar
 - [ ] Persist an in-progress game across restart
