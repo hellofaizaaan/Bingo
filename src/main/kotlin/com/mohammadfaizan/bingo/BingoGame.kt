@@ -98,13 +98,18 @@ object BingoGame {
 
     // ---- lifecycle ----
 
-    fun start(sender: CommandSender?, m: BingoMode, requestedSize: Int, seed: Long?): Boolean {
+    fun start(sender: CommandSender?, m: BingoMode, requestedSize: Int, seed: Long?, solo: Boolean = false): Boolean {
         if (state == State.COUNTDOWN || state == State.RUNNING) {
             Text.send(sender, "<red>A game is already running.")
             return false
         }
 
-        if (plugin.config.getBoolean("auto-assign", true)) autoAssign()
+        if (solo) {
+            buildSoloTeams()
+        } else {
+            loadTeams()
+            if (plugin.config.getBoolean("auto-assign", true)) autoAssign()
+        }
         val active = teams.values.filter { it.members.isNotEmpty() }
         if (active.isEmpty()) {
             Text.send(sender, "<red>Nobody is on a team. Use <white>/bingo join <team></white> first.")
@@ -192,6 +197,7 @@ object BingoGame {
         clearBar()
         card = null
         lockedBy.clear()
+        loadTeams() // restore config teams (drops any solo teams)
         Text.broadcast("<gray>Bingo stopped.")
     }
 
@@ -217,31 +223,45 @@ object BingoGame {
             finishTimeUp()
             return
         }
-
         for ((uuid, teamId) in playerTeam) {
             val team = teams[teamId] ?: continue
             val player = Bukkit.getPlayer(uuid) ?: continue
             if (player.gameMode == GameMode.SPECTATOR) continue
-            for (stack in player.inventory.contents) {
-                val mat = stack?.type ?: continue
-                if (mat == Material.AIR) continue
-                val idx = c.indexOf(mat)
-                if (idx < 0) continue
-
-                if (mode == BingoMode.LOCKOUT) {
-                    if (lockedBy.containsKey(idx)) continue
-                    lockedBy[idx] = team.id
-                    team.claim(idx)
-                } else {
-                    if (team.has(idx)) continue
-                    team.claim(idx)
-                }
-                announceClaim(team, mat)
-                checkWin(team)
-                if (state != State.RUNNING) return
-            }
+            scanInventory(player, team, c)
+            if (state != State.RUNNING) return
         }
         updateBar()
+    }
+
+    /** Instant check for one player, driven by pickup / click / craft events. */
+    fun scanPlayerNow(player: Player) {
+        if (state != State.RUNNING) return
+        if (player.gameMode == GameMode.SPECTATOR) return
+        val team = teamOf(player.uniqueId) ?: return
+        val c = card ?: return
+        scanInventory(player, team, c)
+        if (state == State.RUNNING) updateBar()
+    }
+
+    private fun scanInventory(player: Player, team: BingoTeam, c: Card) {
+        for (stack in player.inventory.contents) {
+            val mat = stack?.type ?: continue
+            if (mat == Material.AIR) continue
+            val idx = c.indexOf(mat)
+            if (idx < 0) continue
+
+            if (mode == BingoMode.LOCKOUT) {
+                if (lockedBy.containsKey(idx)) continue
+                lockedBy[idx] = team.id
+                team.claim(idx)
+            } else {
+                if (team.has(idx)) continue
+                team.claim(idx)
+            }
+            announceClaim(team, mat)
+            checkWin(team)
+            if (state != State.RUNNING) return
+        }
     }
 
     private fun checkWin(team: BingoTeam) {
@@ -271,6 +291,7 @@ object BingoGame {
             if (win) firework(p)
         }
         clearBar()
+        loadTeams()
     }
 
     private fun finishTimeUp() {
@@ -282,6 +303,7 @@ object BingoGame {
             stopTasks()
             clearBar()
             Text.broadcast("<yellow>Time! It's a draw at <white>${lead?.claimedCount ?: 0}</white> cells.")
+            loadTeams()
         } else {
             endWithWinner(lead)
         }
@@ -323,6 +345,22 @@ object BingoGame {
             val t = active[i % active.size]
             t.members.add(p.uniqueId)
             playerTeam[p.uniqueId] = t.id
+        }
+    }
+
+    private val SOLO_PALETTE = listOf("red", "blue", "green", "yellow", "aqua", "light_purple", "gold", "white")
+
+    private fun buildSoloTeams() {
+        teams.clear()
+        playerTeam.clear()
+        Bukkit.getOnlinePlayers().filter {
+            (it.gameMode == GameMode.SURVIVAL || it.gameMode == GameMode.ADVENTURE) && !it.hasPermission("bingo.exempt")
+        }.forEachIndexed { i, p ->
+            val id = "solo_" + p.uniqueId.toString().replace("-", "").take(8)
+            val team = BingoTeam(id, p.name, SOLO_PALETTE[i % SOLO_PALETTE.size])
+            team.members.add(p.uniqueId)
+            teams[id] = team
+            playerTeam[p.uniqueId] = id
         }
     }
 
@@ -377,7 +415,7 @@ object BingoGame {
 
     private fun updateBar() {
         val b = bar ?: return
-        val lead = teams.values.maxByOrNull { it.claimedCount }
+        val lead = teams.values.filter { it.members.isNotEmpty() }.maxByOrNull { it.claimedCount }
         val leadName = lead?.display ?: "—"
         val leadCount = lead?.claimedCount ?: 0
         val total = card?.cells ?: 1
@@ -388,6 +426,17 @@ object BingoGame {
         } else {
             b.progress((leadCount.toFloat() / total).coerceIn(0f, 1f))
             b.name(Text.mm("<green>Bingo <gray>— ${mode.name.lowercase()} <dark_gray>|</dark_gray> lead <white>$leadName</white> $leadCount/$total"))
+        }
+
+        // per-player action-bar standings
+        activePlayers().forEach { p ->
+            val mine = teamOf(p.uniqueId)?.claimedCount ?: 0
+            val txt = if (lead != null) {
+                "<gray>you <white>$mine</white><gray>/$total <dark_gray>|</dark_gray> lead <${lead.colorMm}>${lead.display}</${lead.colorMm}> <white>$leadCount</white>"
+            } else {
+                "<gray>you <white>$mine</white><gray>/$total"
+            }
+            p.sendActionBar(Text.mm(txt))
         }
     }
 

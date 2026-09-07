@@ -8,8 +8,8 @@ import org.bukkit.entity.Player
 
 class BingoCommand : CommandExecutor, TabCompleter {
 
-    private val subs = listOf("start", "stop", "join", "leave", "card", "teams", "status", "reroll", "reload")
-    private val adminSubs = setOf("start", "stop", "reroll", "reload")
+    private val subs = listOf("start", "solo", "stop", "join", "leave", "card", "teams", "status", "reroll", "reload")
+    private val adminSubs = setOf("start", "solo", "stop", "reroll", "reload")
     private val modeNames = BingoMode.entries.map { it.name.lowercase() }
 
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
@@ -25,13 +25,13 @@ class BingoCommand : CommandExecutor, TabCompleter {
         }
 
         when (sub) {
-            "start" -> {
+            "start", "solo" -> {
                 val cfg = Bingo.instance.config
                 val mode = BingoMode.parse(args.getOrNull(1))
                     ?: BingoMode.parse(cfg.getString("default-mode")) ?: BingoMode.STANDARD
                 val sz = args.getOrNull(2)?.toIntOrNull() ?: cfg.getInt("default-size", 5)
                 val seed = args.getOrNull(3)?.toLongOrNull()
-                BingoGame.start(sender, mode, sz, seed)
+                BingoGame.start(sender, mode, sz, seed, solo = sub == "solo")
             }
             "stop" -> BingoGame.stop(sender)
             "reroll" -> BingoGame.reroll(sender)
@@ -73,6 +73,7 @@ class BingoCommand : CommandExecutor, TabCompleter {
     private fun help(sender: CommandSender, label: String) {
         Text.raw(sender, "<gradient:#4ade80:#22d3ee><bold>Bingo</bold></gradient> <dark_gray>·</dark_gray> <gray>commands")
         Text.raw(sender, "  <white>/$label start [mode] [size] [seed]</white> <gray>— begin (${modeNames.joinToString(", ")})")
+        Text.raw(sender, "  <white>/$label solo [mode] [size]</white> <gray>— everyone is their own team")
         Text.raw(sender, "  <white>/$label join <team></white> <dark_gray>·</dark_gray> <white>leave</white> <dark_gray>·</dark_gray> <white>card</white> <dark_gray>·</dark_gray> <white>teams</white>")
         Text.raw(sender, "  <white>/$label status</white> <dark_gray>·</dark_gray> <white>stop</white> <dark_gray>·</dark_gray> <white>reroll</white> <dark_gray>·</dark_gray> <white>reload</white>")
     }
@@ -85,11 +86,12 @@ class BingoCommand : CommandExecutor, TabCompleter {
     ): List<String> {
         return when {
             args.size == 1 -> subs.filter { it.startsWith(args[0].lowercase()) }
-            args.size == 2 && args[0].equals("start", true) ->
+            args.size == 2 && (args[0].equals("start", true) || args[0].equals("solo", true)) ->
                 (modeNames + listOf("3", "4", "5")).filter { it.startsWith(args[1].lowercase()) }
             args.size == 2 && args[0].equals("join", true) ->
                 BingoGame.teams.keys.filter { it.startsWith(args[1].lowercase()) }
-            args.size == 3 && args[0].equals("start", true) -> listOf("3", "4", "5").filter { it.startsWith(args[2]) }
+            args.size == 3 && (args[0].equals("start", true) || args[0].equals("solo", true)) ->
+                listOf("3", "4", "5").filter { it.startsWith(args[2]) }
             else -> emptyList()
         }
     }

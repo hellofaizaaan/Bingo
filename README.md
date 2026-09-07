@@ -11,8 +11,9 @@ First to a line wins.
 1. Players `/bingo join <team>` (or let `auto-assign` split everyone up).
 2. An admin runs `/bingo start` — a card is rolled from a seed, players are healed,
    cleared, spread out, and a countdown runs.
-3. **GO.** Every 0.5 s the plugin scans inventories; the first time anyone on a
-   team holds a card item, that cell is theirs (and stays theirs).
+3. **GO.** Picking up, crafting, or moving a card item claims that cell instantly
+   for your team (a 0.5 s inventory sweep is the backstop). Cells stay claimed.
+   A live action bar shows your count and the current leader.
 4. First team to the win condition takes it — titles, fireworks, done.
 
 ## Commands
@@ -22,6 +23,7 @@ First to a line wins.
 | Sub | Does |
 |---|---|
 | `start [mode] [size] [seed]` | begin a game (defaults from config) |
+| `solo [mode] [size]` | begin a game where every online player is their own team |
 | `stop` | end the game |
 | `join <team>` / `leave` | pick / drop a team |
 | `card` | open the card as a chest GUI (glowing = your team has it, barrier = locked by another team) |
@@ -76,9 +78,11 @@ Release with the jar whenever `version` in `build.gradle.kts` changes.
 
 ## Roadmap
 
+- [x] Instant claim on pickup / craft / inventory move (+ 0.5 s backstop)
+- [x] `/bingo solo` — everyone is their own team
+- [x] Live action-bar standings
 - [ ] 7×7 cards (needs a double-chest / bigger GUI)
 - [ ] Material *groups* on a card ("any planks", "any raw ore")
-- [ ] Per-game team creation (`/bingo team create`), solo mode
-- [ ] Spectator card view, live scoreboard sidebar
-- [ ] Instant claim feedback on pickup (not just the 0.5 s scan)
+- [ ] Per-game team creation (`/bingo team create`)
+- [ ] Scoreboard sidebar, spectator card view
 - [ ] Persist an in-progress game across restart
