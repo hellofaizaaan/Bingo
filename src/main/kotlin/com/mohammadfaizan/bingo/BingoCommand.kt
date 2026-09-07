@@ -138,7 +138,7 @@ class BingoCommand : CommandExecutor, TabCompleter {
         return when {
             args.size == 1 -> subs.filter { it.startsWith(args[0].lowercase()) }
             args.size == 2 && (args[0].equals("start", true) || args[0].equals("solo", true)) ->
-                (modeNames + listOf("3", "4", "5")).filter { it.startsWith(args[1].lowercase()) }
+                (modeNames + listOf("3", "4", "5", "6")).filter { it.startsWith(args[1].lowercase()) }
             args.size == 2 && args[0].equals("join", true) ->
                 BingoGame.teams.keys.filter { it.startsWith(args[1].lowercase()) }
             args.size == 2 && args[0].equals("team", true) ->
@@ -149,7 +149,7 @@ class BingoCommand : CommandExecutor, TabCompleter {
                 listOf("red", "blue", "green", "yellow", "aqua", "gold", "light_purple", "white")
                     .filter { it.startsWith(args[3].lowercase()) }
             args.size == 3 && (args[0].equals("start", true) || args[0].equals("solo", true)) ->
-                listOf("3", "4", "5").filter { it.startsWith(args[2]) }
+                listOf("3", "4", "5", "6").filter { it.startsWith(args[2]) }
             else -> emptyList()
         }
     }

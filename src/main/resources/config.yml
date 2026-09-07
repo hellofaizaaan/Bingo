@@ -1,7 +1,7 @@
 # ───────────────────────────────  Game  ─────────────────────────────
 # Default mode + card size when /bingo start is run with no arguments.
 default-mode: standard   # standard | blackout | lockout | count
-default-size: 5          # 3, 4 or 5
+default-size: 5          # 3, 4, 5 or 6
 
 # `count` mode: how many cells a team needs. Default = just over half the card.
 count-target: 13
@@ -25,6 +25,9 @@ on-start:
 
 # Random spread distance (blocks) from the world spawn when spread is on.
 spread-radius: 500
+
+# Show a live team-standings sidebar during the game.
+scoreboard: true
 
 # Hardcore: a death puts that player in spectator for the rest of the game.
 # Their team keeps whatever cells it has claimed.

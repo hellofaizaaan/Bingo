@@ -44,6 +44,7 @@ object CardMenu {
     private fun slotFor(size: Int, row: Int, col: Int): Int = when (size) {
         3 -> (row + 2) * 9 + (col + 3)
         4 -> (row + 1) * 9 + (col + 3)
+        6 -> row * 9 + (col + 2)
         else -> (row + 1) * 9 + (col + 2)
     }
 

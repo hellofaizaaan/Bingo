@@ -5,6 +5,7 @@ First to a line wins.
 
 - **Platform:** Paper `26.2` (Bukkit API), Kotlin, JDK 25
 - **Package:** `com.mohammadfaizan.bingo`
+- Card sizes **3–6**; live team-standings sidebar + boss bar + action bar
 
 ## How it plays
 
@@ -63,6 +64,7 @@ On start each player is handed a **Bingo Card** item (right-click to open the GU
 | `on-start.*` | all `true` | clear inventory, heal, spread, set time to day |
 | `spread-radius` | `500` | blocks from world spawn |
 | `hardcore` | `false` | a death spectates that player for the rest of the game |
+| `scoreboard` | `true` | show the live team-standings sidebar during a game |
 | `teams` | red/blue/green/yellow | `id: { display, color }` — colour is a MiniMessage colour name |
 | `item-pool` | ~130 items + 9 groups | `distribution` weights, `groups` (named "any of these" sets), and `easy` / `medium` / `hard` lists of materials and `"#group"` refs |
 
@@ -99,6 +101,7 @@ Release with the jar whenever `version` in `build.gradle.kts` changes.
 - [x] `/bingo reveal`
 - [x] Runtime team creation (`/bingo team create`) + `/bingo lobby` GUI
 - [x] "one away!" broadcast + `hardcore` mode
-- [ ] 7×7 cards (needs a double-chest / bigger GUI)
-- [ ] Scoreboard sidebar
+- [x] 6×6 cards
+- [x] Live scoreboard sidebar
 - [ ] Persist an in-progress game across restart
+- [ ] Lines-to-win / free-centre options

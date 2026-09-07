@@ -19,6 +19,9 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.scheduler.BukkitTask
+import org.bukkit.scoreboard.Criteria
+import org.bukkit.scoreboard.DisplaySlot
+import org.bukkit.scoreboard.Scoreboard
 import java.util.UUID
 import kotlin.random.Random
 
@@ -46,6 +49,7 @@ object BingoGame {
     private var scanTask: BukkitTask? = null
     private var countdownTask: BukkitTask? = null
     private var bar: BossBar? = null
+    private var scoreboard: Scoreboard? = null
     private var endsAt = 0L
     private var timeLimitSecs = 0
 
@@ -174,7 +178,7 @@ object BingoGame {
         }
 
         mode = m
-        size = requestedSize.coerceIn(3, 5)
+        size = requestedSize.coerceIn(3, 6)
         if (pool.poolSize < size * size) {
             Text.send(sender, "<red>Item pool has only <white>${pool.poolSize}</white> entries — not enough for a ${size}×${size} card.")
             return false
@@ -247,6 +251,7 @@ object BingoGame {
         }
         Text.broadcast("<green><bold>GO!</bold></green> <gray>First to ${goalText()} wins.")
         scanTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable { scan() }, 10L, 10L)
+        buildScoreboard()
         updateBar()
     }
 
@@ -258,6 +263,7 @@ object BingoGame {
         state = State.IDLE
         stopTasks()
         clearBar()
+        clearScoreboard()
         removeCardItems()
         card = null
         lockedBy.clear()
@@ -373,6 +379,7 @@ object BingoGame {
         Stats.recordGame(playerTeam.keys.toList(), team.members.toList())
         removeCardItems()
         clearBar()
+        clearScoreboard()
         loadTeams()
     }
 
@@ -386,6 +393,7 @@ object BingoGame {
             Stats.recordGame(playerTeam.keys.toList(), emptyList())
             removeCardItems()
             clearBar()
+            clearScoreboard()
             Text.broadcast("<yellow>Time! It's a draw at <white>${lead?.claimedCount ?: 0}</white> cells.")
             loadTeams()
         } else {
@@ -538,7 +546,67 @@ object BingoGame {
     }
 
     fun onPlayerJoin(player: Player) {
-        bar?.let { if (state != State.IDLE && state != State.ENDED) player.showBossBar(it) }
+        if (state == State.IDLE || state == State.ENDED) return
+        bar?.let { player.showBossBar(it) }
+        scoreboard?.let { player.scoreboard = it }
+    }
+
+    // ---- scoreboard sidebar ----
+
+    private fun buildScoreboard() {
+        if (!plugin.config.getBoolean("scoreboard", true)) return
+        val mgr = Bukkit.getScoreboardManager() ?: return
+        val sb = mgr.newScoreboard
+        val obj = sb.registerNewObjective(
+            "bingo", Criteria.DUMMY,
+            Text.mm("<gradient:#4ade80:#22d3ee><bold>BINGO</bold></gradient>"),
+        )
+        obj.displaySlot = DisplaySlot.SIDEBAR
+        scoreboard = sb
+        Bukkit.getOnlinePlayers().forEach { it.scoreboard = sb }
+        refreshScoreboard()
+    }
+
+    private fun refreshScoreboard() {
+        val sb = scoreboard ?: return
+        val obj = sb.getObjective("bingo") ?: return
+        sb.entries.toList().forEach { sb.resetScores(it) }
+        val total = card?.cells ?: 0
+        val ranked = teams.values.filter { it.members.isNotEmpty() }.sortedByDescending { it.claimedCount }
+        var s = ranked.size + (if (endsAt > 0L) 1 else 0)
+        ranked.forEachIndexed { i, t ->
+            val entry = (uniquePrefix(i) + legacy(t.colorMm) + t.display.take(14) + " §8" + t.claimedCount + "/" + total)
+            obj.getScore(entry.take(40)).score = s--
+        }
+        if (endsAt > 0L) {
+            val remain = ((endsAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
+            obj.getScore((uniquePrefix(15) + "§e" + remain + "s left").take(40)).score = s--
+        }
+    }
+
+    private fun clearScoreboard() {
+        val main = Bukkit.getScoreboardManager()?.mainScoreboard
+        if (main != null) Bukkit.getOnlinePlayers().forEach { it.scoreboard = main }
+        scoreboard = null
+    }
+
+    /** Zero-width `§X§r ` prefix so scoreboard entries stay unique even with duplicate names. */
+    private fun uniquePrefix(i: Int): String = "§" + "0123456789abcdef"[i.coerceIn(0, 15)] + "§r "
+
+    private fun legacy(mm: String): String = when (mm) {
+        "red", "dark_red" -> "§c"
+        "blue", "dark_blue" -> "§9"
+        "green" -> "§a"
+        "dark_green" -> "§2"
+        "yellow" -> "§e"
+        "gold" -> "§6"
+        "aqua", "dark_aqua" -> "§b"
+        "light_purple" -> "§d"
+        "dark_purple" -> "§5"
+        "gray" -> "§7"
+        "dark_gray" -> "§8"
+        "black" -> "§0"
+        else -> "§f"
     }
 
     private fun updateBar() {
@@ -566,6 +634,8 @@ object BingoGame {
             }
             p.sendActionBar(Text.mm(txt))
         }
+
+        refreshScoreboard()
     }
 
     private fun clearBar() {
